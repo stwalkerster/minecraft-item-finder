@@ -6,47 +6,68 @@ class Program
 {
     static void Main(string[] args)
     {
-        var ignoreTags = new[] { "x", "y", "z", "id", "keepPacked" };
-        var ignoreEntities = new[]
-        {
-            "minecraft:jukebox",
-            "minecraft:lectern",
-            "minecraft:end_portal",
-            "minecraft:decorated_pot", // FIXME: this probably needs to be checked later, but it's NBT is "item" instead of "Items" 
-        };
+        var searchId = "minecraft:goat_horn";
         
         foreach (var regionFile in args)
         {
             var region = new AnvilFile(regionFile);
             foreach (var chunk in region.GetChunks())
             {
-                try
-                {
-                    var blockEntities = chunk.RootTag.First<Raspite.Serializer.Tags.ListTag>("block_entities");
+                var blockEntities = chunk.RootTag.First<ListTag>("block_entities");
 
-                    foreach (CompoundTag entity in blockEntities.Children)
+                foreach (var tag in blockEntities.Children)
+                {
+                    if (tag is not CompoundTag entity)
                     {
-                        var id = entity.First<Raspite.Serializer.Tags.StringTag>("id").Value;
-                        if (ignoreEntities.Contains(id))
+                        continue;
+                    }
+
+                    var id = entity.First<StringTag>("id").Value;
+                    var x = entity.First<IntegerTag>("x").Value;
+                    var y = entity.First<IntegerTag>("y").Value;
+                    var z = entity.First<IntegerTag>("z").Value;
+
+                    if (id == "minecraft:decorated_pot")
+                    {
+                        var item = entity.First<CompoundTag>("item");
+                        var itemId = item.First<StringTag>("id").Value;
+                        if (itemId == searchId)
+                        {
+                            var count = item.First<SignedByteTag>("Count").Value;
+                            if (count > 0)
+                            {
+                                Console.WriteLine($"Found {searchId} in {id} at ({x}, {y}, {z})");
+                            }
+                        }
+                    }
+
+                    if (!entity.Children.Select(x => x.Name).Contains("Items"))
+                    {
+                        continue;
+                    }
+                            
+                    var items = entity.First<ListTag>("Items");
+
+                    foreach (var itemTag in items.Children)
+                    {
+                        if (itemTag is not CompoundTag item)
                         {
                             continue;
                         }
-                        
-                        var x = entity.First<Raspite.Serializer.Tags.IntegerTag>("x").Value;
-                        var y = entity.First<Raspite.Serializer.Tags.IntegerTag>("y").Value;
-                        var z = entity.First<Raspite.Serializer.Tags.IntegerTag>("z").Value;
-                        
-                        Console.WriteLine($"({x}, {y}, {z}): {id}");
-                        
-                        // Dump tags
-                        foreach (var se in entity.Children.Where(x => !ignoreTags.Contains(x.Name)).Select(x => "  - " + x.Name))
+
+                        var itemId = item.First<StringTag>("id").Value;
+                        if (itemId != searchId)
                         {
-                            Console.WriteLine(se);
+                            continue;
+                        }
+
+                        var count = item.First<SignedByteTag>("Count").Value;
+                        if (count > 0)
+                        {
+                            Console.WriteLine($"Found {searchId} in {id} at ({x}, {y}, {z})");
+                            break;
                         }
                     }
-                }
-                catch (Exception ex)
-                {
                 }
             }
         }
