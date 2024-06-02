@@ -1,5 +1,6 @@
 ﻿namespace GoatHornFinder;
 
+using Mono.Options;
 using Raspite.Serializer.Tags;
 
 class Program
@@ -8,7 +9,44 @@ class Program
     {
         var searchId = "minecraft:goat_horn";
         
-        foreach (var regionFile in args)
+        var isRegion = true;
+        var options = new OptionSet
+        {
+            { "r|region", "Use region file parsing mode", x => isRegion = true },
+            { "e|entity", "Use entity file parsing mode", x => isRegion = false },
+            { "search=", "Specify the item type to look for", x => searchId = x }
+        };
+
+        var extra = options.Parse(args);
+
+        if (extra.Count == 0)
+        {
+            var help = new[]
+            {
+                "Usage: GoatHornFinder [-r|-e] [--search ID] <file> [file...]",
+                "",
+                "   -r, --region : Use to indicate supplied MCA files are region files (./region/*.mca, default)",
+                "   -e, --entity : Use to indicate supplied MCA files are entity files (./entities/*.mca)",
+                "       --search : Change the searched-for item to the provided ID. (default 'minecraft:goat_horn')",
+                "",
+                "Specify one or more MCA files to search for the relevant item."
+            };
+            foreach (var h in help)
+            {
+                Console.WriteLine(h);
+            }
+            return;
+        }
+        
+        if (isRegion)
+        {
+            SearchRegion(extra, searchId);
+        }
+    }
+
+    private static void SearchRegion(IEnumerable<string> files, string searchId)
+    {
+        foreach (var regionFile in files)
         {
             var region = new AnvilFile(regionFile);
             foreach (var chunk in region.GetChunks())
