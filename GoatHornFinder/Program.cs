@@ -42,6 +42,10 @@ class Program
         {
             SearchRegion(extra, searchId);
         }
+        else
+        {
+            SearchEntities(extra, searchId);
+        }
     }
 
     private static void SearchRegion(IEnumerable<string> files, string searchId)
@@ -99,6 +103,61 @@ class Program
                             continue;
                         }
 
+                        var count = item.First<SignedByteTag>("Count").Value;
+                        if (count > 0)
+                        {
+                            Console.WriteLine($"Found {searchId} in {id} at ({x}, {y}, {z})");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private static void SearchEntities(IEnumerable<string> files, string searchId)
+    {
+        foreach (var regionFile in files)
+        {
+            var region = new AnvilFile(regionFile);
+            foreach (var chunk in region.GetChunks())
+            {
+                var entities = chunk.RootTag.First<ListTag>("Entities");
+                
+                foreach (var tag in entities.Children)
+                {
+                    if (tag is not CompoundTag entity)
+                    {
+                        continue;
+                    }
+                
+                    var id = entity.First<StringTag>("id").Value;
+
+                    var pos = entity.First<ListTag>("Pos");
+                    var x = ((DoubleTag)pos.Children[0]).Value;
+                    var y = ((DoubleTag)pos.Children[1]).Value;
+                    var z = ((DoubleTag)pos.Children[2]).Value;
+                    
+                    if (!entity.Children.Select(x => x.Name).Contains("Items"))
+                    {
+                        continue;
+                    }
+                            
+                    var items = entity.First<ListTag>("Items");
+                    
+                    foreach (var itemTag in items.Children)
+                    {
+                        if (itemTag is not CompoundTag item)
+                        {
+                            continue;
+                        }
+                    
+                        var itemId = item.First<StringTag>("id").Value;
+                        if (itemId != searchId)
+                        {
+                            continue;
+                        }
+                    
                         var count = item.First<SignedByteTag>("Count").Value;
                         if (count > 0)
                         {
